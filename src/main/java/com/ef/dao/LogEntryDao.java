@@ -2,6 +2,7 @@ package com.ef.dao;
 
 import com.ef.model.LogEntry;
 import com.ef.util.connection.ConnectionUtil;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -22,6 +23,28 @@ public class LogEntryDao {
         try {
             con.prepareStatement("CALL findByAccessIp(?)");
             con.setString(1, accessIp);
+            ResultSet rs = con.executeQueryWithResultSet();
+            while (rs.next()) {
+                LogEntry temp = retriveFromResultSet(rs);
+                resultEntries.add(temp);
+            }
+        } catch (Exception e) {
+            Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, e);
+        } finally {
+            con.closeConnection();
+        }
+
+        return resultEntries;
+    }
+
+    public List<LogEntry> findByTimeIntervalAndDuration(Date startDate, Date endDate, String duration) {
+        List<LogEntry> resultEntries = new ArrayList<>();
+
+        ConnectionUtil con = new ConnectionUtil();
+        try {
+            con.prepareStatement("CALL findByTimeIntervalAndDuration(?)");
+            con.setDate(1, startDate);
+            con.setDate(1, endDate);
             ResultSet rs = con.executeQueryWithResultSet();
             while (rs.next()) {
                 LogEntry temp = retriveFromResultSet(rs);

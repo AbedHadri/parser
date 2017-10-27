@@ -16,5 +16,7 @@ public class MainTest {
     public void testMain() throws IOException {
         String[] args = {"-ip=123.123.123.123"};
         Parser.main(args);
+        String[] args2 = {"-al=c:/min-access-log.txt" , "--threshold=100"};
+        Parser.main(args2);
     }
 }

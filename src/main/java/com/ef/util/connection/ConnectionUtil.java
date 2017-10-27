@@ -1,10 +1,11 @@
 package com.ef.util.connection;
 
 import java.sql.Connection;
-import java.sql.Date;
+import java.util.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
@@ -103,7 +104,7 @@ public class ConnectionUtil {
 
     public void setDate(int index, Date value) {
         try {
-            this.pStatement.setDate(index, value);
+            this.pStatement.setTimestamp(index,new Timestamp( value.getTime()));
         } catch (SQLException ex) {
             if (this.connection == null || this.pStatement == null) {
                 Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, "connection or perpared statement not initialized.");
@@ -115,10 +116,30 @@ public class ConnectionUtil {
     public void addBatch() {
         try {
             this.pStatement.addBatch();
+            this.pStatement.clearParameters();
         } catch (SQLException ex) {
             if (this.connection == null || this.pStatement == null) {
                 Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, "connection or perpared statement not initialized.");
             }
+            Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public void clearBatch() {
+        try {
+            this.pStatement.clearBatch();
+        } catch (SQLException ex) {
+            if (this.connection == null || this.pStatement == null) {
+                Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, "connection or perpared statement not initialized.");
+            }
+            Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public void executeBatch() {
+        try {
+            this.pStatement.executeBatch();
+        } catch (SQLException ex) {
             Logger.getLogger(ConnectionUtil.class.getName()).log(Level.SEVERE, null, ex);
         }
     }

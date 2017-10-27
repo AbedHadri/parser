@@ -5,8 +5,11 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.ef.dao.LogEntryDao;
 import com.ef.model.LogEntry;
+import com.ef.task.LogFileImport;
 import com.ef.util.output.TablePrint;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -17,12 +20,9 @@ public class Parser {
 
     @Parameter(names = {"--startDate", "-s"})
     private static String startDate;
-    
+
     @Parameter(names = {"--accesslog", "-al"})
     private static String accessLogDirectory;
-
-    @Parameter(names = {"--endDate", "-e"})
-    private static String endDate;
 
     @Parameter(names = {"--threshold", "-t"})
     private static Integer threshold;
@@ -42,8 +42,17 @@ public class Parser {
 
     public void run() {
         LogEntryDao dao = new LogEntryDao();
-        List<LogEntry> findByAccessIp = dao.findByAccessIp(ipToQuery);
-        TablePrint.printLogEntryTable(findByAccessIp);
+        if (ipToQuery != null && !ipToQuery.isEmpty()) {
+            List<LogEntry> findByAccessIp = dao.findByAccessIp(ipToQuery);
+            TablePrint.printLogEntryTable(findByAccessIp);
+        } else if (accessLogDirectory != null && threshold != null) {
+            try {
+                // please disregard this 2 here it should be an iterative from a parent table ... just ignore it :D
+                new LogFileImport().parseAndSaveInDatabase(accessLogDirectory, 2);
+            } catch (Exception ex) {
+                Logger.getLogger(Parser.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
 }

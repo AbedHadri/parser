@@ -3,9 +3,6 @@ package com.ef.util.output;
 import com.ef.model.LogEntry;
 import de.vandermeer.asciitable.AsciiTable;
 import java.util.List;
-import java.util.regex.Pattern;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.WordUtils;
 
 /**
  *
@@ -21,7 +18,6 @@ public class TablePrint {
         at.addRow("Count", "Access IP", "Request Header", "Response", "User Agent");
 
         int count = 0;
-
         for (LogEntry logEntry : logEntries) {
             count = count + 1;
             at.addRule();
