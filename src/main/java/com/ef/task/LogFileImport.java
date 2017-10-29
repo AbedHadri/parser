@@ -1,20 +1,17 @@
 package com.ef.task;
 
 import com.ef.consts.ParseConsts;
-import com.ef.model.LogEntry;
+import com.ef.dao.LogFileDao;
+import com.ef.model.LogFile;
 import com.ef.util.connection.ConnectionUtil;
 import com.ef.util.converter.DateUtils;
 import com.google.common.io.Files;
 import com.google.common.io.LineProcessor;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.sql.Date;
-import java.util.List;
-import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
 
@@ -24,7 +21,23 @@ import org.apache.commons.io.LineIterator;
  */
 public class LogFileImport {
 
-    public void parseAndSaveInDatabase(String logFilePath, int logId) throws Exception {
+    public void saveLogFileDataAndParse(String logFilePath) {
+        LogFileDao dao = new LogFileDao();
+        String[] parts = logFilePath.split("/");
+
+        LogFile logFile = new LogFile(parts[parts.length - 1]);
+
+        logFile = dao.saveLogFileData(logFile);
+
+        try {
+            parseAndSaveInDatabase(logFilePath, logFile.getLogId());
+        } catch (Exception ex) {
+            Logger.getLogger(LogFileImport.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }
+
+    private void parseAndSaveInDatabase(String logFilePath, int logId) throws Exception {
         File file = null;
         LineIterator it = null;
         ConnectionUtil connection = new ConnectionUtil();
@@ -53,7 +66,7 @@ public class LogFileImport {
                     if (counter % ParseConsts.BATCH_SIZE == 0 || it.hasNext() == false) {
                         connection.executeBatch();
                         connection.clearBatch();
-                        System.out.printf("%d of %d imported , %d %% finished...\r", counter, total, (int)((double) ((double) counter / total) * 100));
+                        System.out.printf("%d of %d imported , %d %% finished...\r", counter, total, (int) ((double) ((double) counter / total) * 100));
 
                     }
                 } else {
@@ -93,7 +106,4 @@ public class LogFileImport {
         return nLines;
     }
 
-    private void sth() {
-
-    }
 }

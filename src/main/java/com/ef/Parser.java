@@ -18,40 +18,60 @@ import java.util.logging.Logger;
 @Parameters(separators = "=")
 public class Parser {
 
-    @Parameter(names = {"--startDate", "-s"})
-    private static String startDate;
+    @Parameter(names = {"--startDate", "-s"}, description = "")
+    private String startDate;
 
-    @Parameter(names = {"--accesslog", "-al"})
-    private static String accessLogDirectory;
+    @Parameter(names = {"--duration", "-d"},
+            description = "The duration you wish to query for , this can be either daily or hourly.")
+    private String duration;
 
-    @Parameter(names = {"--threshold", "-t"})
-    private static Integer threshold;
+    @Parameter(names = {"--accesslog", "-al"},
+            description = "The path to the log you wish to import and query.")
+    private String accessLogDirectory;
 
-    @Parameter(names = {"--ipToQuery", "-ip"})
+    @Parameter(names = {"--threshold", "-t"},
+            description = "The threshold you wish to be considered the limit and any value equal or above will be blacklisted.")
+    private Integer threshold;
+
+    @Parameter(names = {"--ipToQuery", "-ip"},
+            description = "Get the request list made by the IP entered.")
     private String ipToQuery;
+
+    @Parameter(names = {"--help", "-h"}, help = true)
+    private boolean help = false;
 
     public static void main(String[] args) {
         Parser parser = new Parser();
-        JCommander.newBuilder()
+
+        JCommander jc = JCommander.newBuilder()
                 .addObject(parser)
-                .build()
-                .parse(args);
-        parser.run();
+                .build();
+        if (parser.help) {
+            jc.usage();
+            return;
+        } else {
+            jc.parse(args);
+            parser.run();
+        }
 
     }
 
     public void run() {
-        LogEntryDao dao = new LogEntryDao();
+
         if (ipToQuery != null && !ipToQuery.isEmpty()) {
+            LogEntryDao dao = new LogEntryDao();
             List<LogEntry> findByAccessIp = dao.findByAccessIp(ipToQuery);
             TablePrint.printLogEntryTable(findByAccessIp);
-        } else if (accessLogDirectory != null && threshold != null) {
+
+            
+        } else if (accessLogDirectory != null && threshold != null && startDate != null && duration != null) {
             try {
-                // please disregard this 2 here it should be an iterative from a parent table ... just ignore it :D
-                new LogFileImport().parseAndSaveInDatabase(accessLogDirectory, 2);
+                new LogFileImport().saveLogFileDataAndParse(accessLogDirectory);
             } catch (Exception ex) {
                 Logger.getLogger(Parser.class.getName()).log(Level.SEVERE, null, ex);
             }
+        } else {
+            System.out.println("Parameters missing , try using --help or -h to see more details.");
         }
     }
 

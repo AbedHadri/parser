@@ -59,6 +59,15 @@ public class LogEntryDao {
         return resultEntries;
     }
 
+    public List<LogEntry> findLogEntriesByStartDateAndEndDateAndThreshold() {
+        List<LogEntry> resultEntries = new ArrayList<>();
+        ConnectionUtil connection = new ConnectionUtil();
+
+        connection.prepareStatement("CALL findLogEntriesByStartDateAndEndDateAndThreshold(? , ?, ?)");
+
+        return resultEntries;
+    }
+
     //
     // private methods
     // 

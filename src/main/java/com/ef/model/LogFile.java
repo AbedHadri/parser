@@ -8,9 +8,20 @@ import java.util.Date;
  */
 public class LogFile {
 
+    public static final String LOG_ID = "log_id";
+    public static final String FILE_NAME = "file_name";
+    public static final String DATE_IMPORTED = "import_date";
+
     private Integer logId;
     private String fileName;
     private Date dateImported;
+
+    public LogFile() {
+    }
+
+    public LogFile(String fileName) {
+        this.fileName = fileName;
+    }
 
     public Integer getLogId() {
         return logId;
