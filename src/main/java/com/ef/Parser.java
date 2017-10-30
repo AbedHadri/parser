@@ -7,6 +7,8 @@ import com.ef.dao.LogEntryDao;
 import com.ef.model.LogEntry;
 import com.ef.task.LogFileImport;
 import com.ef.util.output.TablePrint;
+import com.ef.validate.DurationValueValidation;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -15,13 +17,13 @@ import java.util.logging.Logger;
  *
  * @author Abed
  */
-@Parameters(separators = "=")
+@Parameters(separators = "=" , commandNames = {"--help"})
 public class Parser {
 
-    @Parameter(names = {"--startDate", "-s"}, description = "")
-    private String startDate;
+    @Parameter(names = {"--startDate", "-s"}, description = "The date that will be the start point for queries.")
+    private Date startDate;
 
-    @Parameter(names = {"--duration", "-d"},
+    @Parameter(names = {"--duration", "-d"}, validateValueWith = DurationValueValidation.class,
             description = "The duration you wish to query for , this can be either daily or hourly.")
     private String duration;
 
@@ -50,8 +52,13 @@ public class Parser {
             jc.usage();
             return;
         } else {
-            jc.parse(args);
-            parser.run();
+            try {
+                jc.parse(args);
+                parser.run();
+            } catch (RuntimeException e) {
+                Logger.getLogger(Parser.class.getName()).log(Level.WARNING ,e.getMessage());
+            }
+
         }
 
     }
@@ -63,7 +70,6 @@ public class Parser {
             List<LogEntry> findByAccessIp = dao.findByAccessIp(ipToQuery);
             TablePrint.printLogEntryTable(findByAccessIp);
 
-            
         } else if (accessLogDirectory != null && threshold != null && startDate != null && duration != null) {
             try {
                 new LogFileImport().saveLogFileDataAndParse(accessLogDirectory);

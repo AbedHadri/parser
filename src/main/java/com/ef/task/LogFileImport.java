@@ -7,8 +7,12 @@ import com.ef.util.connection.ConnectionUtil;
 import com.ef.util.converter.DateUtils;
 import com.google.common.io.Files;
 import com.google.common.io.LineProcessor;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,21 +42,30 @@ public class LogFileImport {
     }
 
     private void parseAndSaveInDatabase(String logFilePath, int logId) throws Exception {
-        File file = null;
-        LineIterator it = null;
+        Reader reader = new FileReader(logFilePath);
         ConnectionUtil connection = new ConnectionUtil();
         int total = 0;
         connection.prepareStatement("INSERT INTO log_entry"
                 + " (log_id ,access_date, access_ip , request_header , response_code  , user_agent)"
                 + " VALUES (?, ?, ?, ?, ?, ?)");
-        try {
-            file = new File(logFilePath);
+        try (BufferedReader bufferedReader
+                = new BufferedReader(reader, 1024 * 50)) {
+
+            reader = new FileReader(logFilePath);
+
+            File file = new File(logFilePath);
             total = getLineCount(file);
-            it = FileUtils.lineIterator(file, "UTF-8");
-            for (int counter = 0; it.hasNext(); counter++) {
-                String line = it.nextLine();
+
+            String line = bufferedReader.readLine();
+
+            for (int counter = 0; line != null; counter++) {
 
                 String[] rowContent = line.split(ParseConsts.DELIMITER);
+
+                long readTime = System.currentTimeMillis();
+                line = bufferedReader.readLine();
+                readTime = System.currentTimeMillis() - readTime;
+
                 if (rowContent.length == ParseConsts.LOG_PARAM_COUNT) {
                     connection.setInteger(1, logId);
                     connection.setDate(2, DateUtils.toDate(rowContent[0]));
@@ -63,18 +76,23 @@ public class LogFileImport {
 
                     connection.addBatch();
 
-                    if (counter % ParseConsts.BATCH_SIZE == 0 || it.hasNext() == false) {
+                    if (counter % ParseConsts.BATCH_SIZE == 0 || line == null) {
+                        long insertTime = System.currentTimeMillis();
                         connection.executeBatch();
+                        insertTime = System.currentTimeMillis() - insertTime;
+
                         connection.clearBatch();
-                        System.out.printf("%d of %d imported , %d %% finished...\r", counter, total, (int) ((double) ((double) counter / total) * 100));
+                        System.out.printf("%d of %d imported , %d %% finished inserted in %dms\r",
+                                counter, total, (int) ((double) ((double) counter / total) * 100), insertTime);
 
                     }
                 } else {
                     System.err.println("row (" + counter + ") is corrupted. (" + (ParseConsts.LOG_PARAM_COUNT - rowContent.length) + ") parameter(s) missing.");
                 }
+
             }
         } finally {
-            LineIterator.closeQuietly(it);
+
             if (connection != null) {
                 connection.clearBatch();
             }

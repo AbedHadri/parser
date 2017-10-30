@@ -54,7 +54,7 @@ public class LogFileDao {
         int logId = 0;
         ConnectionUtil connection = new ConnectionUtil();
 
-        connection.prepareStatement("SELECT MAX(log_id) log_id FROM log_entry");
+        connection.prepareStatement("SELECT MAX(log_id) log_id FROM log_file");
 
         ResultSet rs = connection.executeQueryWithResultSet();
         try {
