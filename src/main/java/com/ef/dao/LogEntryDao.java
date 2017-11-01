@@ -1,6 +1,7 @@
 package com.ef.dao;
 
 import com.ef.model.LogEntry;
+import com.ef.model.LogFile;
 import com.ef.util.connection.ConnectionUtil;
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -66,6 +67,26 @@ public class LogEntryDao {
         connection.prepareStatement("CALL findLogEntriesByStartDateAndEndDateAndThreshold(? , ?, ?)");
 
         return resultEntries;
+    }
+
+    public Integer findCountByLogId(Integer logId) {
+        Integer result = 0;
+        ConnectionUtil connection = new ConnectionUtil();
+
+        connection.prepareStatement("SELECT COUNT(*) FROM log_entry WHERE log_id = ?");
+
+        connection.setInteger(1, logId);
+
+        ResultSet rs = connection.executeQueryWithResultSet();
+        try {
+            if (rs.next()) {
+                result = rs.getInt(1);
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(LogFileDao.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        connection.closeConnection();
+        return result;
     }
 
     //

@@ -5,9 +5,12 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.ef.dao.LogEntryDao;
 import com.ef.model.LogEntry;
+import com.ef.model.LogFile;
+import com.ef.task.IpFilteringTask;
 import com.ef.task.LogFileImport;
 import com.ef.util.output.TablePrint;
 import com.ef.validate.DurationValueValidation;
+import com.ef.validate.IPValueValidator;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
@@ -17,7 +20,7 @@ import java.util.logging.Logger;
  *
  * @author Abed
  */
-@Parameters(separators = "=" , commandNames = {"--help"})
+@Parameters(separators = "=", commandNames = {"--help"})
 public class Parser {
 
     @Parameter(names = {"--startDate", "-s"}, description = "The date that will be the start point for queries.")
@@ -35,7 +38,7 @@ public class Parser {
             description = "The threshold you wish to be considered the limit and any value equal or above will be blacklisted.")
     private Integer threshold;
 
-    @Parameter(names = {"--ipToQuery", "-ip"},
+    @Parameter(names = {"--ipToQuery", "-ip"}, validateValueWith = IPValueValidator.class,
             description = "Get the request list made by the IP entered.")
     private String ipToQuery;
 
@@ -56,7 +59,7 @@ public class Parser {
                 jc.parse(args);
                 parser.run();
             } catch (RuntimeException e) {
-                Logger.getLogger(Parser.class.getName()).log(Level.WARNING ,e.getMessage());
+                Logger.getLogger(Parser.class.getName()).log(Level.WARNING, e.getMessage());
             }
 
         }
@@ -72,9 +75,10 @@ public class Parser {
 
         } else if (accessLogDirectory != null && threshold != null && startDate != null && duration != null) {
             try {
-                new LogFileImport().saveLogFileDataAndParse(accessLogDirectory);
+                LogFile logFile = new LogFileImport().saveLogFileDataAndParse(accessLogDirectory);
+                new IpFilteringTask().filterAndInsertToBlackList(logFile, startDate, duration, threshold);
             } catch (Exception ex) {
-                Logger.getLogger(Parser.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(Parser.class.getName()).log(Level.SEVERE, null, ex.getMessage());
             }
         } else {
             System.out.println("Parameters missing , try using --help or -h to see more details.");

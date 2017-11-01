@@ -1,6 +1,7 @@
 package com.ef.task;
 
 import com.ef.consts.ParseConsts;
+import com.ef.dao.LogEntryDao;
 import com.ef.dao.LogFileDao;
 import com.ef.model.LogFile;
 import com.ef.util.connection.ConnectionUtil;
@@ -16,8 +17,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.LineIterator;
 
 /**
  *
@@ -25,23 +24,65 @@ import org.apache.commons.io.LineIterator;
  */
 public class LogFileImport {
 
-    public void saveLogFileDataAndParse(String logFilePath) {
+    public LogFile saveLogFileDataAndParse(String logFilePath) {
         LogFileDao dao = new LogFileDao();
         String[] parts = logFilePath.split("/");
 
-        LogFile logFile = new LogFile(parts[parts.length - 1]);
+        String fileName = parts[parts.length - 1];
 
+        System.out.println("Importing, please wait..");
+        LogFile logFile = new LogFile(fileName);
         logFile = dao.saveLogFileData(logFile);
 
         try {
-            parseAndSaveInDatabase(logFilePath, logFile.getLogId());
-        } catch (Exception ex) {
-            Logger.getLogger(LogFileImport.class.getName()).log(Level.SEVERE, null, ex);
-        }
 
+            parseAndSaveInDatabase(logFilePath, logFile.getLogId());
+            System.out.println(generateFinalResultMessage(logFilePath, logFile.getLogId()));
+        } catch (Exception ex) {
+            Logger.getLogger(LogFileImport.class.getName()).log(Level.SEVERE, null, ex.getMessage());
+        }
+        return logFile;
     }
 
-    private void parseAndSaveInDatabase(String logFilePath, int logId) throws Exception {
+    /////////////
+    // private methods here
+    ////////////
+    // for the 'Java' way please use the method preceding this one.
+    // There is no way better and faster than this 
+    // (no more than 1 min for 100K lines and no SSD), for better performance
+    // and smoother testing this one is perferred.
+    //
+    private void parseAndSaveInDatabase(String logFilePath, int logId) {
+
+        // this type of queries is not allowed as procedure in MySQL.
+        // note than in some old MySQL versions parameterization of file path CAN FAIL!
+        // therefore please use some new version of MySQL.
+        String sqlQuery = "load data infile ? into table log_entry"
+                + " fields terminated by '\\|' enclosed by '' lines terminated by '\\n'"
+                + " (@col1,@col2,@col3,@col4,@col5) "
+                + " set log_id = ? , "
+                + " access_date = @col1, "
+                + " access_ip = @col2, "
+                + " request_header = @col3, "
+                + " response_code = @col4, "
+                + " user_agent= @col5;";
+
+        ConnectionUtil connection = new ConnectionUtil();
+
+        connection.prepareStatement(sqlQuery);
+
+        connection.setString(1, logFilePath);
+        connection.setInteger(2, logId);
+
+        connection.executeQuery();
+
+        connection.closeConnection();
+    }
+
+    /* 
+    since 'Java tool' was required in the test document. this is the 'Java' way of doing it (Row by row in bulks).
+     */
+    private void parseAndSaveInDatabaseJavaWay(String logFilePath, int logId) throws Exception {
         Reader reader = new FileReader(logFilePath);
         ConnectionUtil connection = new ConnectionUtil();
         int total = 0;
@@ -53,8 +94,7 @@ public class LogFileImport {
 
             reader = new FileReader(logFilePath);
 
-            File file = new File(logFilePath);
-            total = getLineCount(file);
+            total = getFileLineCount(logFilePath);
 
             String line = bufferedReader.readLine();
 
@@ -76,6 +116,8 @@ public class LogFileImport {
 
                     connection.addBatch();
 
+                    // to split into batches of size BATCH_SIZE 
+                    // or if this is the last line run in order not to lose last batch if size < BATCH_SIZE
                     if (counter % ParseConsts.BATCH_SIZE == 0 || line == null) {
                         long insertTime = System.currentTimeMillis();
                         connection.executeBatch();
@@ -99,29 +141,48 @@ public class LogFileImport {
         }
     }
 
-    //
-    // private methods here
-    //
-    /* 
-    could have been done with Apache commons as in above but just to try this Guava iterator too.
-     */
-    private int getLineCount(File file) throws IOException {
-        int nLines = Files.readLines(file, StandardCharsets.UTF_8, new LineProcessor<Integer>() {
-            int count = 0;
+    private int getFileLineCount(String logFilePath) {
+        File file = new File(logFilePath);
+        int nLines = 0;
+        try {
+            nLines = Files.readLines(file, StandardCharsets.UTF_8, new LineProcessor<Integer>() {
+                int count = 0;
 
-            @Override
-            public boolean processLine(String line) throws IOException {
-                count++;
-                return true;
-            }
+                @Override
+                public boolean processLine(String line) throws IOException {
+                    count++;
+                    return true;
+                }
 
-            @Override
-            public Integer getResult() {
-                return count;
-            }
+                @Override
+                public Integer getResult() {
+                    return count;
+                }
 
-        });
+            });
+        } catch (IOException ex) {
+            Logger.getLogger(LogFileImport.class.getName()).log(Level.SEVERE, null, ex.getMessage());
+        }
         return nLines;
+    }
+
+    private String generateFinalResultMessage(String filePath, int logId) {
+        String message = "";
+        Integer importedTotalRows = 0;
+        Integer totalRowsInFile = getFileLineCount(filePath);
+
+        LogEntryDao entryDao = new LogEntryDao();
+        importedTotalRows = entryDao.findCountByLogId(logId);
+
+        if (importedTotalRows == totalRowsInFile) {
+            message = "All " + totalRowsInFile + " rows where imported successfully.";
+        } else if (importedTotalRows < totalRowsInFile) {
+            message = "Only " + importedTotalRows + " where imported out of " + totalRowsInFile + " rows.";
+        } else {
+            message = importedTotalRows + " where imported out of " + totalRowsInFile + " rows. Duplicates may have occured.";
+        }
+
+        return message;
     }
 
 }
