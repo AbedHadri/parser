@@ -7,5 +7,5 @@ what it specifically does is: import a log file from a specified directory then 
 You can test run this application by running the following command:<br>
 `java -cp "parser.jar" com.ef.Parser --startDate=2017-01-01.13:00:00 --duration=hourly --threshold=100 --path=/path/to/log`
 
-#Documentation
+# Documentation
 documentation is now being prepared, Stay tuned!
